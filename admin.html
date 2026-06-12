@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raj Agro Industries — Admin Panel</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; background: #f0f2f5; color: #333; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #1b5e20; border-radius: 3px; }
+
+    .admin-layout { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar { width: 280px; background: linear-gradient(180deg, #0d3311 0%, #1b5e20 100%); color: #fff; position: fixed; top: 0; left: 0; bottom: 0; overflow-y: auto; z-index: 100; transition: transform 0.3s; }
+    .sidebar-header { padding: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); text-align: center; }
+    .sidebar-header h2 { font-size: 16px; font-weight: 800; color: #FFD700; letter-spacing: 1px; }
+    .sidebar-header p { font-size: 11px; color: #a5d6a7; margin-top: 4px; }
+    .sidebar-section { padding: 8px 0; }
+    .sidebar-section-title { padding: 8px 20px; font-size: 10px; font-weight: 700; color: #a5d6a7; text-transform: uppercase; letter-spacing: 2px; }
+    .sidebar-item { padding: 10px 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 10px; transition: all 0.2s; border-left: 3px solid transparent; }
+    .sidebar-item:hover { background: rgba(255,255,255,0.05); color: #fff; }
+    .sidebar-item.active { background: rgba(255,215,0,0.1); color: #FFD700; border-left-color: #FFD700; font-weight: 700; }
+    .sidebar-item i { width: 16px; text-align: center; font-size: 12px; }
+
+    /* Main Content */
+    .main-content { flex: 1; margin-left: 280px; }
+    .top-bar { background: #fff; padding: 14px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 50; }
+    .top-bar h3 { font-size: 16px; font-weight: 700; color: #1b5e20; }
+    .top-bar-actions { display: flex; gap: 10px; align-items: center; }
+    .btn { padding: 8px 20px; border: none; border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; font-family: 'Poppins', sans-serif; }
+    .btn-primary { background: linear-gradient(135deg, #1b5e20, #2e7d32); color: #fff; box-shadow: 0 4px 12px rgba(46,125,50,0.3); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(46,125,50,0.4); }
+    .btn-secondary { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+    .btn-danger { background: #e53935; color: #fff; }
+    .btn-sm { padding: 6px 14px; font-size: 12px; }
+    .btn-success { background: #4CAF50; color: #fff; }
+
+    .content-area { padding: 30px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); border: 1px solid #eee; }
+    .card-title { font-size: 16px; font-weight: 700; color: #1b5e20; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid #e8f5e9; }
+    .card-title i { color: #FFA000; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-group input, .form-group textarea, .form-group select { width: 100%; padding: 10px 14px; border: 2px solid #e8f5e9; border-radius: 8px; font-size: 13px; font-family: 'Poppins', sans-serif; outline: none; transition: border-color 0.2s; }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #2e7d32; }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    .img-preview { width: 80px; height: 80px; border-radius: 8px; object-fit: cover; border: 2px solid #e8f5e9; margin-top: 8px; }
+    .color-input { width: 50px; height: 36px; border: 2px solid #e8f5e9; border-radius: 8px; cursor: pointer; padding: 2px; }
+
+    .list-item { background: #f9fbe7; border: 1px solid #e8f5e9; border-radius: 10px; padding: 16px; margin-bottom: 12px; position: relative; }
+    .list-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .list-item-header h4 { font-size: 14px; font-weight: 700; color: #1b5e20; }
+    .remove-btn { background: #ffebee; color: #e53935; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 12px; transition: all 0.2s; }
+    .remove-btn:hover { background: #e53935; color: #fff; }
+
+    .add-btn { width: 100%; padding: 12px; border: 2px dashed #c8e6c9; border-radius: 10px; background: transparent; color: #2e7d32; font-weight: 600; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s; font-family: 'Poppins', sans-serif; }
+    .add-btn:hover { background: #e8f5e9; border-color: #2e7d32; }
+
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #1b5e20; color: #fff; padding: 14px 24px; border-radius: 10px; font-weight: 600; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.4s; }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast.error { background: #e53935; }
+
+    .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; z-index: 9998; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #e8f5e9; border-top-color: #1b5e20; border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .status-bar { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #666; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .status-dot.connected { background: #4CAF50; }
+    .status-dot.disconnected { background: #e53935; }
+
+    @media (max-width: 768px) {
+      .sidebar { transform: translateX(-100%); }
+      .sidebar.open { transform: translateX(0); }
+      .main-content { margin-left: 0; }
+      .form-row, .form-row-3 { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="admin-layout">
+      <!-- Sidebar -->
+      <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <img src="logo.png" alt="Raj Agro Industries" style="height: 50px; width: auto; object-fit: contain; margin-bottom: 8px;" />
+          <h2>RAJ AGRO INDUSTRIES</h2>
+          <p>Admin Panel — Nand Gopal</p>
+        </div>
+        <div id="sidebar-nav"></div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="top-bar">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="btn btn-sm btn-secondary" onclick="toggleSidebar()" style="display:none;" id="menu-toggle"><i class="fas fa-bars"></i></button>
+            <h3 id="page-title">Dashboard</h3>
+          </div>
+          <div class="top-bar-actions">
+            <div class="status-bar">
+              <div class="status-dot" id="status-dot"></div>
+              <span id="status-text">Connecting...</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="loadContent()"><i class="fas fa-sync-alt"></i> Reload</button>
+            <a href="index.html" target="_blank" class="btn btn-secondary btn-sm"><i class="fas fa-external-link-alt"></i> View Site</a>
+          </div>
+        </div>
+        <div class="content-area" id="content-area">
+          <div style="text-align:center;padding:60px 0;">
+            <div class="spinner" style="margin:0 auto 16px;"></div>
+            <p style="color:#666;">Loading content from Firebase...</p>
+          </div>
+        </div>
+      </main>
+    </div>
+    <div class="toast" id="toast"></div>
+  </div>
+
+  <script>
+    // Firebase Init
+    const firebaseConfig = {
+      apiKey: "AIzaSyDm4e1MJdsYcE07RJbUPSS9T2oXm9C70jI",
+      authDomain: "raj-agro-industries.firebaseapp.com",
+      projectId: "raj-agro-industries",
+      storageBucket: "raj-agro-industries.firebasestorage.app",
+      messagingSenderId: "250855234091",
+      appId: "1:250855234091:web:e8ebfe6309f17814dd286e"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Default Content Structure
+    const DEFAULT_CONTENT = {
+      topbar: { phone1: "9131777176", phone2: "7880087950", email: "help@nandgopalagro.com", address: "Khasra, Jhabra Road, Near Chordia Petrol Pump", location: "Khasra, Rajasthan" },
+      navbar: { logo: "logo.png", companyName: "RAJ AGRO INDUSTRIES", brandName: "NAND GOPAL" },
+      home: {
+        hero: {
+          badge: "🏆 SINCE 1994 • 30+ YEARS OF TRUST",
+          description: "India's most trusted cattle feed brand, nurturing livestock and empowering farmers across 18 states with scientifically formulated nutrition.",
+          cta1Text: "Our Products", cta2Text: "Watch Video",
+          slides: [
+            { title: "देश का नंबर 1", subtitle: "पशु आहार", bgImage: "cow1.png" },
+            { title: "Happy Feed Shop", subtitle: "नंद गोपाल", bgImage: "cow2.png" },
+            { title: "Quality Cattle Feed", subtitle: "Since 1994", bgImage: "cow3.png" }
+          ],
+          quickStats: [
+            { number: 30, suffix: "+", label: "Years" },
+            { number: 18, suffix: "", label: "States" },
+            { number: 1, suffix: "Cr+", label: "Farmers" }
+          ]
+        },
+        welcome: { badge: "🌿 Welcome To", title: "Raj Agro Industries", desc1: "Established in 1994, Raj Agro Industries is a renowned name in cattle feed manufacturing, with a manufacturing unit at Khasra, Rajasthan. Our flagship brand Nand Gopal has become the most trusted name in animal feed.", desc2: "With state-of-the-art manufacturing facilities, we produce a wide range of cattle feed products that are scientifically formulated to meet the nutritional requirements of Indian cattle breeds.", videoIcon: "🎬", videoTitle: "देश का नंबर 1 पशु आहार", videoDesc: "Watch how Nand Gopal is transforming Indian dairy farming with scientifically formulated cattle feed.", videoUrl: "" },
+        productsSection: { badge: "🐄 Our Products", title: "Dil se khila, Sirf Nand Gopal", subtitle: "Desh ka No.1 Pashu Aahar" },
+        statsSection: { badge: "📊 Our Numbers", title: "Raj Agro Industries Presence", subtitle: "Trusted across India" },
+        whyUsSection: { badge: "🏆 Why Choose Us", title: "Leading India's Cattle Feed Industry", card1Icon: "🏭", card1Title: "Founded in 1994", card1Subtitle: "Growing Strong For Over Three Decades", card1Desc: "Raj Agro Industries is proud to be one of the leading producers of cattle feed. Since 1994, our flagship brand Nand Gopal has become the most trusted name in cattle feed across India.", card2Icon: "⚙️", card2Title: "Daily Production Capacity", card2Highlights: ["Most modern plant and machinery", "Our own fleet of 800+ vehicles", "Lowest market prices for raw materials"] },
+        testimonials: { badge: "💬 Testimonials", title: "SUCCESS STORIES", subtitle: "FROM OUR CUSTOMERS" }
+      },
+      products: [
+        { name: "Nand Gopal Dairy Special (By Pass)", color: "#FFD700", icon: "🐄", image: "", tag: "#1 Seller", desc: "Premium bypass protein feed designed to maximize milk yield in dairy cattle. Scientifically formulated for optimal nutrition absorption." },
+        { name: "Nand Gopal Balanced Feed", color: "#4CAF50", icon: "🌾", image: "", tag: "Best Value", desc: "Perfectly balanced nutrition for daily cattle needs. Rich in essential vitamins and minerals for healthy livestock." },
+        { name: "Nand Gopal Super Feed", color: "#2196F3", icon: "⭐", image: "", tag: "Premium", desc: "Premium quality feed with enhanced protein content. Ideal for high-yielding cattle breeds across India." },
+        { name: "Nand Gopal Bull Pro", color: "#FF9800", icon: "💪", image: "", tag: "Power Feed", desc: "Specially formulated for bulls and breeding stock. Boosts strength, stamina, and reproductive health." },
+        { name: "Nand Gopal HS Pro", color: "#9C27B0", icon: "🔬", image: "", tag: "Scientific", desc: "High-science formulation with research-backed ingredients for maximum health and productivity benefits." },
+        { name: "Nand Gopal MRP", color: "#E91E63", icon: "🏷️", image: "", tag: "Value Pack", desc: "Budget-friendly quality feed. Same Nand Gopal nutrition at an affordable price for every farmer." }
+      ],
+      stats: [
+        { number: 18, suffix: "", label: "States Covered Across India", icon: "fa-map-location-dot" },
+        { number: 500, suffix: "+", label: "No. of Distributors", icon: "fa-truck-fast" },
+        { number: 1, suffix: " Crore+", label: "Trusted By Every Day", icon: "fa-users" },
+        { number: 3000, suffix: "", label: "Daily Production Capacity", icon: "fa-industry" },
+        { number: 50000, suffix: "", label: "Cattle Feed Dealers", icon: "fa-store" },
+        { number: 5, suffix: " Star", label: "Customer Satisfaction Rate", icon: "fa-star" }
+      ],
+      stories: [
+        { name: "राम प्रसाद शर्मा", location: "राजस्थान", quote: "नंद गोपाल फीड खिलाने से गायों का दूध बढ़ गया है। बहुत अच्छा फीड है।", avatar: "👨‍🌾" },
+        { name: "सुरेश कुमार", location: "उत्तर प्रदेश", quote: "पिछले 10 सालों से नंद गोपाल फीड इस्तेमाल कर रहा हूं। गायें बहुत स्वस्थ हैं।", avatar: "🧑‍🌾" },
+        { name: "महेश पटेल", location: "गुजरात", quote: "दूध की गुणवत्ता में काफी सुधार हुआ है। नंद गोपाल सबसे अच्छा है।", avatar: "👨‍🏫" }
+      ],
+      pressReleases: [
+        { title: "Why Choose Nand Gopal?", desc: "Because it's made from the finest quality raw materials, specifically designed for Indian cattle breeds.", icon: "fa-award", date: "Mar 2024", video: "" },
+        { title: "Benefits of Feeding Nand Gopal", desc: "Higher milk yield, better health, improved digestion, and glossy coat for your cattle.", icon: "fa-heart-pulse", date: "Feb 2024", video: "" },
+        { title: "Our Technology", desc: "State-of-the-art manufacturing with automated processes and quality checks at every stage.", icon: "fa-microchip", date: "Jan 2024", video: "" }
+      ],
+      careerJobs: [
+        { title: "Regional Sales Manager", dept: "Sales", location: "Rajasthan", type: "Full Time", desc: "Lead sales operations across assigned regions. Build and manage distributor networks." },
+        { title: "Quality Assurance Engineer", dept: "Quality", location: "Khasra Plant", type: "Full Time", desc: "Ensure product quality standards. Conduct regular audits and quality testing." },
+        { title: "Production Supervisor", dept: "Manufacturing", location: "Khasra Plant", type: "Full Time", desc: "Oversee daily production activities. Manage production team and schedules." },
+        { title: "Marketing Executive", dept: "Marketing", location: "Multiple Locations", type: "Full Time", desc: "Plan and execute marketing campaigns. Coordinate with advertising agencies." },
+        { title: "Accounts Officer", dept: "Finance", location: "Khasra Plant", type: "Full Time", desc: "Manage daily accounting operations. Handle GST filings and financial reports." },
+        { title: "Driver / Logistics", dept: "Logistics", location: "Rajasthan", type: "Full Time", desc: "Transport cattle feed to distributors. Maintain vehicle and delivery records." }
+      ],
+      csrInitiatives: [
+        { title: "Green India Mission", icon: "🌳", desc: "We have planted over 50,000 trees across Rajasthan and neighboring states as part of our commitment to a greener India.", stat: "50K+ Trees" },
+        { title: "Farmer Education", icon: "📚", desc: "Free training programs for 10,000+ farmers on modern cattle rearing techniques and nutrition management.", stat: "10K+ Farmers" },
+        { title: "Village Development", icon: "🏘️", desc: "Supporting 50+ villages with clean water, electricity, and basic healthcare facilities.", stat: "50+ Villages" },
+        { title: "Women Empowerment", icon: "👩‍🌾", desc: "Empowering rural women through dairy cooperatives and self-help groups with micro-financing support.", stat: "5K+ Women" }
+      ],
+      bookPages: [
+        { leftTitle: 'Our Foundation', leftText: 'Established in 1994 in Khasra, Rajasthan, Raj Agro Industries began with a vision to serve Indian farmers.', leftIcon: '🏠', rightTitle: 'Join Our Journey', rightText: 'Be part of the Nand Gopal family. Together, we can transform Indian dairy farming and empower millions of farmers across the nation.', rightIcon: '🚀' },
+        { leftTitle: 'Growth Story', leftText: 'From a single plant to 3000 MT/day capacity, our network spans 18 states with over 500+ distributors and 50000+ dealers serving farmers daily.', leftIcon: '📈', rightTitle: 'Our Reach', rightText: 'With our own fleet of 800+ vehicles, we ensure timely delivery of quality cattle feed to every corner of India.', rightIcon: '🌍' },
+        { leftTitle: 'Quality Promise', leftText: 'ISO certified. Every batch undergoes rigorous testing to ensure the highest quality nutrition for your cattle.', leftIcon: '⭐', rightTitle: 'Innovation Hub', rightText: 'Our R&D team develops scientifically formulated products using the latest technology and research.', rightIcon: '🔬' },
+        { leftTitle: 'Our Products', leftText: 'From Dairy Special to Bull Pro, our range covers every need of modern dairy farming.', leftIcon: '🐂', rightTitle: 'Farmer Trust', rightText: '30+ years of trust built on quality, commitment, and dedication to Indian farmers.', rightIcon: '🤝' },
+        { leftTitle: 'Future Vision', leftText: "To become India's largest cattle feed manufacturer, setting new standards in quality and innovation.", leftIcon: '🔭', rightTitle: 'Nand Gopal Legacy', rightText: "From a small beginning to India's most trusted cattle feed brand — the journey continues.", rightIcon: '🏠' }
+      ],
+      about: {
+        hero: { title: "About Us", subtitle: "30+ Years of Trust & Excellence in Cattle Feed Manufacturing", icon: "🏭", bgImage: "" },
+        overview: { title: "Raj Agro Industries", desc1: "Established in 1994, Raj Agro Industries Pvt. Ltd. is a leading producer of cattle feed in India. Located in Khasra, Rajasthan, our state-of-the-art manufacturing facility spans over 30+ acres.", desc2: "Our flagship brand Nand Gopal has become the most trusted name in cattle feed across 18 states in India. We produce scientifically formulated products that meet the nutritional requirements of Indian cattle breeds.", desc3: "With our own fleet of 800+ vehicles, 500+ distributors, and 50000+ dealers, we serve over 1 Crore farmers every single day." },
+        mission: "To provide the highest quality cattle feed that enhances milk production and cattle health, while empowering Indian farmers with scientifically formulated nutrition at affordable prices.",
+        vision: "To be India's most trusted and largest cattle feed manufacturer, recognized globally for quality, innovation, and commitment to sustainable dairy farming practices.",
+        timeline: [
+          { year: "2006", title: "500 Ton Automatic Unit in Rania", desc: "Launched another automatic unit with a capacity of 500 tons per day in Rania, Uttar Pradesh.", imgIcon: "🏭", imgLabel: "500 TON FULLY AUTOMATIC PLANT" },
+          { year: "2013", title: "1000MT Total Capacity Achievement", desc: "Establishment of another 500-ton-per-day automatic plant in Rania. Total capacity reached 1000MT per day.", imgIcon: "🏗️", imgLabel: "1000 TON FULLY AUTOMATIC PLANT" },
+          { year: "2014", title: "400 Ton DORB Solvent Plant", desc: "Installed our first solvent plant with a capacity of 400 tons per day for high-quality DORB and rice bran oil.", imgIcon: "⚙️", imgLabel: "400 TON DORB SOLVENT PLANT" },
+          { year: "2015", title: "1500 MT Total Production Milestone", desc: "Inaugurated a new 500-ton-capacity manufacturing unit. Total production capacity reached 1500 MT per day.", imgIcon: "🔬", imgLabel: "1500 MT PRODUCTION PLANT" },
+          { year: "2023", title: "3000MT Market Leadership Achievement", desc: "Built a fully automated 1000MT/day plant in Raniya. Total production capacity of 3000MT/day, making us the market leader.", imgIcon: "🏆", imgLabel: "3000 MT MARKET LEADER" }
+        ],
+        values: [
+          { icon: "🎯", title: "Quality First", desc: "We never compromise on quality. Every batch goes through rigorous testing." },
+          { icon: "🤝", title: "Farmer Trust", desc: "Built on 30+ years of trust with Indian farmers and dairy communities." },
+          { icon: "🔬", title: "Innovation", desc: "Continuously investing in R&D to develop scientifically formulated feed." },
+          { icon: "🌱", title: "Sustainability", desc: "Committed to environmentally responsible manufacturing practices." }
+        ]
+      },
+      whyus: {
+        hero: { title: "Why Choose Us", subtitle: "30+ years of trust, quality, and innovation in cattle feed", icon: "🏆", bgImage: "" },
+        advantages: [
+          { icon: "🏆", title: "30+ Years Experience", desc: "Over 30+ years of expertise in cattle feed manufacturing since 1994." },
+          { icon: "🔬", title: "Scientific Formulation", desc: "Every product is research-backed and scientifically formulated for Indian cattle breeds." },
+          { icon: "🏭", title: "Modern Infrastructure", desc: "State-of-the-art manufacturing facility with automated processes across 30+ acres." },
+          { icon: "🚚", title: "Own Fleet", desc: "800+ vehicles ensuring timely delivery to distributors and dealers across India." },
+          { icon: "📊", title: "3,000 MT Daily Capacity", desc: "Industry-leading production capacity to meet growing demand across 18 states." },
+          { icon: "🤝", title: "Farmer First", desc: "Committed to affordable pricing without compromising on quality for Indian farmers." }
+        ]
+      },
+      career: {
+        hero: { title: "Career", subtitle: "Join India's leading cattle feed company. Build your future with us!", icon: "💼", bgImage: "" },
+        perks: [
+          { icon: "💰", title: "Competitive Salary", desc: "Industry-best salary packages with performance bonuses." },
+          { icon: "📈", title: "Growth Opportunities", desc: "Clear career progression paths with regular promotions." },
+          { icon: "🏥", title: "Health Benefits", desc: "Comprehensive health insurance for you and your family." },
+          { icon: "📚", title: "Training Programs", desc: "Regular skill development and training workshops." }
+        ]
+      },
+      contact: {
+        hero: { title: "Contact Us", subtitle: "We Would Love To Hear From You", icon: "", bgImage: "" },
+        info: { office: ["Khasra, Jhabra Road,", "Near Chordia Petrol Pump,", "Rajasthan - 302003"], factory: ["Khasra, Jhabra Road,", "Rajasthan - 302003,", "India"], phones: ["+91 9131777176", "+91 7880087950"], email: "help@nandgopalagro.com", hours: ["Mon - Sat", "10:00am - 07:00pm"] }
+      },
+      press: { hero: { title: "Press Releases", subtitle: "Latest news and updates from Raj Agro Industries", icon: "📰", bgImage: "" } },
+      footer: { description: "Established in 1994, Raj Agro Industries is India's leading cattle feed manufacturer with the flagship brand Nand Gopal.", copyright: "© 2024 Raj Agro Industries Pvt. Ltd. All rights reserved.", tagline: "Made with ❤️ for Indian Farmers" }
+    };
+
+    // State
+    let siteContent = null;
+    let currentSection = 'dashboard';
+
+    // Sidebar Navigation Config
+    const NAV_CONFIG = [
+      { type: 'section', label: 'GLOBAL' },
+      { id: 'topbar', label: 'Top Bar', icon: 'fa-bars' },
+      { id: 'navbar', label: 'Navbar', icon: 'fa-navicon' },
+      { id: 'footer', label: 'Footer', icon: 'fa-shoe-prints' },
+      { type: 'section', label: 'HOME PAGE' },
+      { id: 'home_hero', label: 'Hero Section', icon: 'fa-image' },
+      { id: 'home_welcome', label: 'Welcome Section', icon: 'fa-hand-sparkles' },
+      { id: 'home_products', label: 'Products Section', icon: 'fa-box' },
+      { id: 'home_stats', label: 'Stats Section', icon: 'fa-chart-bar' },
+      { id: 'home_whyus', label: 'Why Us Section', icon: 'fa-trophy' },
+      { id: 'home_testimonials', label: 'Testimonials', icon: 'fa-comments' },
+      { type: 'section', label: 'DATA LISTS' },
+      { id: 'products_list', label: 'Products List', icon: 'fa-list' },
+      { id: 'stats_list', label: 'Stats List', icon: 'fa-hashtag' },
+      { id: 'stories_list', label: 'Success Stories', icon: 'fa-quote-right' },
+      { id: 'press_list', label: 'Press Releases', icon: 'fa-newspaper' },
+      { id: 'career_jobs', label: 'Career Jobs', icon: 'fa-briefcase' },
+      { id: 'csr_list', label: 'CSR Initiatives', icon: 'fa-leaf' },
+      { type: 'section', label: 'BOOK SECTION' },
+      { id: 'book_section', label: 'Book Pages', icon: 'fa-book' },
+      { type: 'section', label: 'INNER PAGES' },
+      { id: 'about', label: 'About Page', icon: 'fa-building' },
+      { id: 'about_timeline', label: 'Timeline', icon: 'fa-clock' },
+      { id: 'about_values', label: 'Values', icon: 'fa-gem' },
+      { id: 'whyus_page', label: 'Why Us Page', icon: 'fa-star' },
+      { id: 'career_page', label: 'Career Page', icon: 'fa-user-tie' },
+      { id: 'contact_page', label: 'Contact Page', icon: 'fa-envelope' },
+      { type: 'section', label: 'SETTINGS' },
+      { id: 'admin_password', label: 'Admin Password', icon: 'fa-lock' },
+    ];
+
+    // Build Sidebar
+    function buildSidebar() {
+      const nav = document.getElementById('sidebar-nav');
+      let html = '';
+      NAV_CONFIG.forEach(item => {
+        if (item.type === 'section') {
+          html += `<div class="sidebar-section"><div class="sidebar-section-title">${item.label}</div></div>`;
+        } else {
+          html += `<div class="sidebar-item${currentSection === item.id ? ' active' : ''}" data-section="${item.id}" onclick="selectSection('${item.id}')"><i class="fas ${item.icon}"></i>${item.label}</div>`;
+        }
+      });
+      nav.innerHTML = html;
+    }
+
+    function selectSection(id) {
+      currentSection = id;
+      buildSidebar();
+      renderSection();
+      document.getElementById('page-title').textContent = NAV_CONFIG.find(n => n.id === id)?.label || 'Dashboard';
+    }
+
+    // Toast
+    function showToast(msg, isError) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast show' + (isError ? ' error' : '');
+      setTimeout(() => t.className = 'toast', 3000);
+    }
+
+    // Load Content
+    // Password management
+    async function loadAdminPassword() {
+      try {
+        const doc = await db.collection('adminSettings').doc('password').get();
+        if (doc.exists && doc.data().password) {
+          localStorage.setItem('adminPassword', doc.data().password);
+        }
+      } catch(e) { console.warn('Could not load admin password from Firebase'); }
+    }
+    async function changeAdminPassword() {
+      const currentPw = document.getElementById('current-pw').value;
+      const newPw = document.getElementById('new-pw').value;
+      const confirmPw = document.getElementById('confirm-pw').value;
+      const storedPw = localStorage.getItem('adminPassword') || 'raj@123';
+      if (!currentPw || !newPw || !confirmPw) { showToast('Please fill in all fields', true); return; }
+      if (currentPw !== storedPw) { showToast('Current password is incorrect', true); return; }
+      if (newPw.length < 4) { showToast('New password must be at least 4 characters', true); return; }
+      if (newPw !== confirmPw) { showToast('New passwords do not match', true); return; }
+      try {
+        await db.collection('adminSettings').doc('password').set({ password: newPw });
+        localStorage.setItem('adminPassword', newPw);
+        showToast('Password updated successfully!');
+        document.getElementById('current-pw').value = '';
+        document.getElementById('new-pw').value = '';
+        document.getElementById('confirm-pw').value = '';
+      } catch(e) {
+        // If Firebase fails, save locally
+        localStorage.setItem('adminPassword', newPw);
+        showToast('Password saved locally (Firebase unavailable)');
+        document.getElementById('current-pw').value = '';
+        document.getElementById('new-pw').value = '';
+        document.getElementById('confirm-pw').value = '';
+      }
+    }
+
+    async function loadContent() {
+      try {
+        await loadAdminPassword();
+        const doc = await db.collection('siteContent').doc('main').get();
+        siteContent = doc.exists ? doc.data() : JSON.parse(JSON.stringify(DEFAULT_CONTENT));
+        document.getElementById('status-dot').className = 'status-dot connected';
+        document.getElementById('status-text').textContent = 'Connected';
+        buildSidebar();
+        renderSection();
+        showToast('Content loaded successfully!');
+      } catch (e) {
+        console.error(e);
+        siteContent = JSON.parse(JSON.stringify(DEFAULT_CONTENT));
+        document.getElementById('status-dot').className = 'status-dot disconnected';
+        document.getElementById('status-text').textContent = 'Offline — using defaults';
+        buildSidebar();
+        renderSection();
+        showToast('Failed to connect. Using defaults.', true);
+      }
+    }
+
+    // Save Content
+    async function saveContent() {
+      try {
+        await db.collection('siteContent').doc('main').set(siteContent);
+        showToast('Content saved successfully!');
+      } catch (e) {
+        console.error(e);
+        showToast('Save failed: ' + e.message, true);
+      }
+    }
+
+    // Reset to Defaults
+    function resetToDefaults() {
+      if (confirm('Reset all content to defaults? This cannot be undone.')) {
+        siteContent = JSON.parse(JSON.stringify(DEFAULT_CONTENT));
+        saveContent();
+        renderSection();
+      }
+    }
+
+    // Helper: get/set nested value
+    function getVal(path) {
+      return path.split('.').reduce((o, k) => o && o[k], siteContent);
+    }
+    function setVal(path, value) {
+      const keys = path.split('.');
+      let obj = siteContent;
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (!obj[keys[i]]) obj[keys[i]] = {};
+        obj = obj[keys[i]];
+      }
+      obj[keys[keys.length - 1]] = value;
+    }
+
+    // Render Helpers
+    function textField(label, path, placeholder, type = 'text') {
+      const val = getVal(path) || '';
+      return `<div class="form-group"><label>${label}</label><input type="${type}" value="${String(val).replace(/"/g, '&quot;')}" placeholder="${placeholder || ''}" onchange="setVal('${path}', this.value)" /></div>`;
+    }
+    function textArea(label, path, placeholder, rows) {
+      const val = getVal(path) || '';
+      return `<div class="form-group"><label>${label}</label><textarea placeholder="${placeholder || ''}" rows="${rows || 3}" onchange="setVal('${path}', this.value)">${String(val).replace(/</g, '&lt;')}</textarea></div>`;
+    }
+    function imageField(label, path) {
+      const val = getVal(path) || '';
+      return `<div class="form-group"><label>${label}</label><input type="text" value="${String(val).replace(/"/g, '&quot;')}" placeholder="Image URL or filename (e.g. cow1.png)" onchange="setVal('${path}', this.value)" />${val ? `<img src="${val}" class="img-preview" onerror="this.style.display='none'" />` : ''}</div>`;
+    }
+    function iconField(label, path) {
+      const val = getVal(path) || '';
+      const isEmoji = /[\u{1F300}-\u{1FFFF}]/u.test(val);
+      const isFa = val.startsWith('fa-');
+      return `<div class="form-group"><label>${label} <span style="font-weight:400;text-transform:none;font-size:11px;color:#999;">(FontAwesome class like fa-star, or emoji/icon URL)</span></label><div style="display:flex;gap:8px;align-items:center;"><input type="text" value="${val}" placeholder="fa-star or 🌟 or image URL" onchange="setVal('${path}', this.value)" style="flex:1;" />${isFa ? `<i class="fas ${val}" style="font-size:24px;color:#1b5e20;"></i>` : isEmoji ? `<span style="font-size:24px;">${val}</span>` : val ? `<img src="${val}" style="width:24px;height:24px;border-radius:4px;object-fit:cover;" onerror="this.style.display='none'" />` : ''}</div></div>`;
+    }
+    function colorField(label, path) {
+      const val = getVal(path) || '#1b5e20';
+      return `<div class="form-group"><label>${label}</label><div style="display:flex;gap:8px;align-items:center;"><input type="color" class="color-input" value="${val}" onchange="setVal('${path}', this.value)" /><input type="text" value="${val}" onchange="setVal('${path}', this.value)" style="width:120px;" /></div></div>`;
+    }
+    function numberField(label, path) {
+      const val = getVal(path) || 0;
+      return `<div class="form-group"><label>${label}</label><input type="number" value="${val}" onchange="setVal('${path}', parseFloat(this.value) || 0)" /></div>`;
+    }
+    function saveButton() {
+      return `<div style="text-align:right;margin-top:20px;"><button class="btn btn-primary" onclick="saveContent()"><i class="fas fa-save"></i> Save Changes</button></div>`;
+    }
+
+    // Section Renderers
+    const SECTION_RENDERERS = {
+      dashboard: () => `
+        <div class="card">
+          <div class="card-title"><i class="fas fa-tachometer-alt"></i> Dashboard</div>
+          <p style="color:#666;font-size:14px;line-height:1.8;margin-bottom:20px;">Welcome to the Raj Agro Industries Admin Panel. Use the sidebar to navigate and edit content for every section of the website.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;">
+            <div style="background:#f1f8e9;border-radius:12px;padding:20px;text-align:center;">
+              <i class="fas fa-file-alt" style="font-size:28px;color:#2e7d32;margin-bottom:8px;"></i>
+              <h4 style="font-size:14px;color:#1b5e20;">8 Pages</h4>
+              <p style="font-size:11px;color:#666;">Fully editable</p>
+            </div>
+            <div style="background:#f1f8e9;border-radius:12px;padding:20px;text-align:center;">
+              <i class="fas fa-database" style="font-size:28px;color:#2e7d32;margin-bottom:8px;"></i>
+              <h4 style="font-size:14px;color:#1b5e20;">Firebase</h4>
+              <p style="font-size:11px;color:#666;">Cloud storage</p>
+            </div>
+            <div style="background:#f1f8e9;border-radius:12px;padding:20px;text-align:center;">
+              <i class="fas fa-image" style="font-size:28px;color:#2e7d32;margin-bottom:8px;"></i>
+              <h4 style="font-size:14px;color:#1b5e20;">Image URLs</h4>
+              <p style="font-size:11px;color:#666;">Custom backgrounds & icons</p>
+            </div>
+            <div style="background:#f1f8e9;border-radius:12px;padding:20px;text-align:center;">
+              <i class="fas fa-undo" style="font-size:28px;color:#2e7d32;margin-bottom:8px;"></i>
+              <h4 style="font-size:14px;color:#1b5e20;">Reset</h4>
+              <p style="font-size:11px;color:#666;">Restore defaults</p>
+            </div>
+          </div>
+          <div style="margin-top:20px;text-align:center;">
+            <button class="btn btn-danger btn-sm" onclick="resetToDefaults()"><i class="fas fa-undo"></i> Reset All to Defaults</button>
+          </div>
+        </div>`,
+
+      topbar: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-bars"></i> Top Bar Settings</div>
+          <div class="form-row">${textField('Phone 1', 'topbar.phone1', 'Phone number')} ${textField('Phone 2', 'topbar.phone2', 'Phone number')}</div>
+          ${textField('Email', 'topbar.email', 'Email address', 'email')}
+          ${textField('Address', 'topbar.address', 'Full address')}
+          ${textField('Location', 'topbar.location', 'City, State')}
+        ${saveButton()}</div>`,
+
+      navbar: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-navicon"></i> Navbar Settings</div>
+          ${imageField('Logo Image', 'navbar.logo')}
+          <div class="form-row">${textField('Company Name', 'navbar.companyName', 'Company name')} ${textField('Brand Name', 'navbar.brandName', 'Brand name')}</div>
+        ${saveButton()}</div>`,
+
+      footer: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-shoe-prints"></i> Footer Settings</div>
+          ${textArea('Footer Description', 'footer.description', 'About the company...')}
+          ${textField('Copyright Text', 'footer.copyright', '© 2024...')}
+          ${textField('Tagline', 'footer.tagline', 'Made with ❤️...')}
+        ${saveButton()}</div>`,
+
+      home_hero: () => {
+        const slides = getVal('home.hero.slides') || [];
+        let slidesHtml = slides.map((s, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>Slide ${i + 1}</h4><button class="remove-btn" onclick="removeArrayItem('home.hero.slides',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row">${textField('Title', `home.hero.slides.${i}.title`, 'Slide title')} ${textField('Subtitle', `home.hero.slides.${i}.subtitle`, 'Slide subtitle')}</div>
+            ${imageField('Background Image', `home.hero.slides.${i}.bgImage`)}
+          </div>`).join('');
+        return `
+          <div class="card"><div class="card-title"><i class="fas fa-image"></i> Hero Section</div>
+            ${textField('Badge Text', 'home.hero.badge', 'Badge text')}
+            ${textArea('Description', 'home.hero.description', 'Hero description...')}
+            <div class="form-row">${textField('CTA 1 Text', 'home.hero.cta1Text', 'Button text')} ${textField('CTA 2 Text', 'home.hero.cta2Text', 'Button text')}</div>
+          </div>
+          <div class="card"><div class="card-title"><i class="fas fa-images"></i> Hero Slides</div>
+            ${slidesHtml}
+            <button class="add-btn" onclick="addArrayItem('home.hero.slides',{title:'New Slide',subtitle:'Subtitle',bgImage:'cow1.png'})"><i class="fas fa-plus"></i> Add Slide</button>
+          ${saveButton()}</div>`;
+      },
+
+      home_welcome: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-hand-sparkles"></i> Welcome Section</div>
+          ${textField('Badge', 'home.welcome.badge', 'Welcome badge')}
+          ${textField('Title', 'home.welcome.title', 'Section title')}
+          ${textArea('Description 1', 'home.welcome.desc1', 'First paragraph...')}
+          ${textArea('Description 2', 'home.welcome.desc2', 'Second paragraph...')}
+          <h4 style="margin:16px 0 8px;font-size:14px;color:#1b5e20;">Video Section</h4>
+          <div class="form-row">${textField('Icon/Emoji', 'home.welcome.videoIcon', '🎬')} ${textField('Video Title', 'home.welcome.videoTitle', 'Title')}</div>
+          ${textArea('Video Description', 'home.welcome.videoDesc', 'Description...')}
+          ${textField('YouTube Video Link', 'home.welcome.videoUrl', 'https://youtube.com/watch?v=xxxxx')}
+        ${saveButton()}</div>`,
+
+      home_products: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-box"></i> Products Section Header</div>
+          ${textField('Badge', 'home.productsSection.badge', 'Section badge')}
+          ${textField('Title', 'home.productsSection.title', 'Section title')}
+          ${textField('Subtitle', 'home.productsSection.subtitle', 'Section subtitle')}
+        ${saveButton()}</div>`,
+
+      home_stats: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-chart-bar"></i> Stats Section Header</div>
+          ${textField('Badge', 'home.statsSection.badge', 'Section badge')}
+          ${textField('Title', 'home.statsSection.title', 'Section title')}
+          ${textField('Subtitle', 'home.statsSection.subtitle', 'Section subtitle')}
+        ${saveButton()}</div>`,
+
+      home_whyus: () => {
+        const highlights = getVal('home.whyUsSection.card2Highlights') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-trophy"></i> Why Us Section</div>
+          ${textField('Badge', 'home.whyUsSection.badge', 'Badge')}
+          ${textField('Title', 'home.whyUsSection.title', 'Title')}
+          <h4 style="margin:16px 0 8px;font-size:14px;color:#1b5e20;">Card 1 (Left)</h4>
+          <div class="form-row">${iconField('Icon', 'home.whyUsSection.card1Icon')} ${textField('Title', 'home.whyUsSection.card1Title', 'Title')}</div>
+          ${textField('Subtitle', 'home.whyUsSection.card1Subtitle', 'Subtitle')}
+          ${textArea('Description', 'home.whyUsSection.card1Desc', 'Description...')}
+          <h4 style="margin:16px 0 8px;font-size:14px;color:#1b5e20;">Card 2 (Right)</h4>
+          <div class="form-row">${iconField('Icon', 'home.whyUsSection.card2Icon')} ${textField('Title', 'home.whyUsSection.card2Title', 'Title')}</div>
+          <div class="form-group"><label>Highlights</label>${highlights.map((h, i) => `<div style="display:flex;gap:8px;margin-bottom:8px;"><input type="text" value="${h}" onchange="updateArrayItem('home.whyUsSection.card2Highlights',${i},this.value)" style="flex:1;" /><button class="remove-btn" onclick="removeArrayItem('home.whyUsSection.card2Highlights',${i})"><i class="fas fa-times"></i></button></div>`).join('')}
+          <button class="add-btn" style="margin-top:4px;" onclick="addArrayItem('home.whyUsSection.card2Highlights','New highlight')"><i class="fas fa-plus"></i> Add Highlight</button></div>
+        ${saveButton()}</div>`;
+      },
+
+      home_testimonials: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-comments"></i> Testimonials Section</div>
+          ${textField('Badge', 'home.testimonials.badge', 'Badge')}
+          ${textField('Title', 'home.testimonials.title', 'Title')}
+          ${textField('Subtitle', 'home.testimonials.subtitle', 'Subtitle')}
+        ${saveButton()}</div>`,
+
+      products_list: () => {
+        const products = getVal('products') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-list"></i> Products List</div>
+          ${products.map((p, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${p.icon || '📦'} ${p.name}</h4><button class="remove-btn" onclick="removeArrayItem('products',${i})"><i class="fas fa-times"></i></button></div>
+            ${textField('Name', `products.${i}.name`, 'Product name')}
+            <div class="form-row">${textField('Tag', `products.${i}.tag`, 'Tag text')} ${colorField('Color', `products.${i}.color`)}</div>
+            <div class="form-row">${iconField('Icon (Emoji/FontAwesome)', `products.${i}.icon`)} ${imageField('Product Image (shows large on card)', `products.${i}.image`)}</div>
+            ${textArea('Description', `products.${i}.desc`, 'Product description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('products',{name:'New Product',color:'#4CAF50',icon:'📦',image:'',tag:'New',desc:'Description...'})"><i class="fas fa-plus"></i> Add Product</button>
+        ${saveButton()}</div>`;
+      },
+
+      stats_list: () => {
+        const stats = getVal('stats') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-hashtag"></i> Stats List</div>
+          ${stats.map((s, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${s.icon} ${s.label}</h4><button class="remove-btn" onclick="removeArrayItem('stats',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row-3">${numberField('Number', `stats.${i}.number`)} ${textField('Suffix', `stats.${i}.suffix`, 'e.g. +, %, Star')} ${iconField('Icon', `stats.${i}.icon`)}</div>
+            ${textField('Label', `stats.${i}.label`, 'Stat label')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('stats',{number:0,suffix:'',label:'New Stat',icon:'fa-chart-simple'})"><i class="fas fa-plus"></i> Add Stat</button>
+        ${saveButton()}</div>`;
+      },
+
+      stories_list: () => {
+        const stories = getVal('stories') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-quote-right"></i> Success Stories</div>
+          ${stories.map((s, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${s.avatar} ${s.name}</h4><button class="remove-btn" onclick="removeArrayItem('stories',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row">${textField('Name', `stories.${i}.name`, 'Customer name')} ${textField('Location', `stories.${i}.location`, 'Location')}</div>
+            ${textArea('Quote', `stories.${i}.quote`, 'Customer quote...')}
+            ${textField('Avatar (emoji)', `stories.${i}.avatar`, '👨‍🌾')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('stories',{name:'New Customer',location:'Location',quote:'Great product!',avatar:'👨‍🌾'})"><i class="fas fa-plus"></i> Add Story</button>
+        ${saveButton()}</div>`;
+      },
+
+      press_list: () => {
+        const pr = getVal('pressReleases') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-newspaper"></i> Press Releases</div>
+          ${pr.map((p, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${p.title}</h4><button class="remove-btn" onclick="removeArrayItem('pressReleases',${i})"><i class="fas fa-times"></i></button></div>
+            ${textField('Title', `pressReleases.${i}.title`, 'Title')}
+            ${textArea('Description', `pressReleases.${i}.desc`, 'Description...')}
+            <div class="form-row">${iconField('Icon', `pressReleases.${i}.icon`)} ${textField('Date', `pressReleases.${i}.date`, 'Mar 2024')}</div>
+            ${textField('YouTube Video Link', `pressReleases.${i}.video`, 'https://youtube.com/watch?v=xxxxx')}
+            ${p.video ? `<div style="margin-top:8px;"><label style="font-size:11px;color:#999;text-transform:none;">Video Preview:</label><div style="margin-top:4px;border-radius:8px;overflow:hidden;border:1px solid #e8f5e9;"><iframe src="${p.video.replace('watch?v=','embed/').replace('youtu.be/','youtube.com/embed/')}" width="100%" height="180" frameborder="0" allowfullscreen style="display:block;"></iframe></div></div>` : ''}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('pressReleases',{title:'New Release',desc:'Description...',icon:'fa-newspaper',date:'Jan 2024',video:''})"><i class="fas fa-plus"></i> Add Release</button>
+        ${saveButton()}</div>`;
+      },
+
+      career_jobs: () => {
+        const jobs = getVal('careerJobs') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-briefcase"></i> Career Jobs</div>
+          ${jobs.map((j, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${j.title}</h4><button class="remove-btn" onclick="removeArrayItem('careerJobs',${i})"><i class="fas fa-times"></i></button></div>
+            ${textField('Title', `careerJobs.${i}.title`, 'Job title')}
+            <div class="form-row-3">${textField('Department', `careerJobs.${i}.dept`, 'Department')} ${textField('Location', `careerJobs.${i}.location`, 'Location')} ${textField('Type', `careerJobs.${i}.type`, 'Full Time')}</div>
+            ${textArea('Description', `careerJobs.${i}.desc`, 'Job description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('careerJobs',{title:'New Position',dept:'Department',location:'Location',type:'Full Time',desc:'Job description...'})"><i class="fas fa-plus"></i> Add Job</button>
+        ${saveButton()}</div>`;
+      },
+
+      csr_list: () => {
+        const csr = getVal('csrInitiatives') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-leaf"></i> CSR Initiatives</div>
+          ${csr.map((c, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${c.icon} ${c.title}</h4><button class="remove-btn" onclick="removeArrayItem('csrInitiatives',${i})"><i class="fas fa-times"></i></button></div>
+            ${textField('Title', `csrInitiatives.${i}.title`, 'Initiative title')}
+            <div class="form-row">${iconField('Icon', `csrInitiatives.${i}.icon`)} ${textField('Stat', `csrInitiatives.${i}.stat`, '50K+ Trees')}</div>
+            ${textArea('Description', `csrInitiatives.${i}.desc`, 'Description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('csrInitiatives',{title:'New Initiative',icon:'🌍',desc:'Description...',stat:'Stat'})"><i class="fas fa-plus"></i> Add Initiative</button>
+        ${saveButton()}</div>`;
+      },
+
+      about: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-building"></i> About Page — Hero</div>
+          ${textField('Title', 'about.hero.title', 'Page title')}
+          ${textField('Subtitle', 'about.hero.subtitle', 'Subtitle')}
+          <div class="form-row">${iconField('Icon', 'about.hero.icon')} ${imageField('Background Image', 'about.hero.bgImage')}</div>
+        ${saveButton()}</div>
+        <div class="card"><div class="card-title"><i class="fas fa-info-circle"></i> Company Overview</div>
+          ${textField('Title', 'about.overview.title', 'Title')}
+          ${textArea('Description 1', 'about.overview.desc1', 'Paragraph 1...')}
+          ${textArea('Description 2', 'about.overview.desc2', 'Paragraph 2...')}
+          ${textArea('Description 3', 'about.overview.desc3', 'Paragraph 3...')}
+        ${saveButton()}</div>
+        <div class="card"><div class="card-title"><i class="fas fa-bullseye"></i> Mission & Vision</div>
+          ${textArea('Mission', 'about.mission', 'Mission statement...')}
+          ${textArea('Vision', 'about.vision', 'Vision statement...')}
+        ${saveButton()}</div>`,
+
+      about_timeline: () => {
+        const tl = getVal('about.timeline') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-clock"></i> Timeline / Milestones</div>
+          ${tl.map((t, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${t.year} — ${t.title}</h4><button class="remove-btn" onclick="removeArrayItem('about.timeline',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row">${textField('Year', `about.timeline.${i}.year`, '2024')} ${textField('Title', `about.timeline.${i}.title`, 'Milestone title')}</div>
+            ${textArea('Description', `about.timeline.${i}.desc`, 'Description...')}
+            <div class="form-row">${iconField('Image Icon', `about.timeline.${i}.imgIcon`)} ${textField('Image Label', `about.timeline.${i}.imgLabel`, 'Label')}</div>
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('about.timeline',{year:'2024',title:'New Milestone',desc:'Description...',imgIcon:'🎉',imgLabel:'LABEL'})"><i class="fas fa-plus"></i> Add Milestone</button>
+        ${saveButton()}</div>`;
+      },
+
+      about_values: () => {
+        const vals = getVal('about.values') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-gem"></i> Values</div>
+          ${vals.map((v, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${v.icon} ${v.title}</h4><button class="remove-btn" onclick="removeArrayItem('about.values',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row">${iconField('Icon', `about.values.${i}.icon`)} ${textField('Title', `about.values.${i}.title`, 'Value title')}</div>
+            ${textArea('Description', `about.values.${i}.desc`, 'Description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('about.values',{icon:'✨',title:'New Value',desc:'Description...'})"><i class="fas fa-plus"></i> Add Value</button>
+        ${saveButton()}</div>`;
+      },
+
+      whyus_page: () => {
+        const adv = getVal('whyus.advantages') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-star"></i> Why Us Page — Hero</div>
+          ${textField('Title', 'whyus.hero.title', 'Page title')}
+          ${textField('Subtitle', 'whyus.hero.subtitle', 'Subtitle')}
+          <div class="form-row">${iconField('Icon', 'whyus.hero.icon')} ${imageField('Background Image', 'whyus.hero.bgImage')}</div>
+        ${saveButton()}</div>
+        <div class="card"><div class="card-title"><i class="fas fa-check-double"></i> Advantages</div>
+          ${adv.map((a, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${a.icon} ${a.title}</h4><button class="remove-btn" onclick="removeArrayItem('whyus.advantages',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row">${iconField('Icon', `whyus.advantages.${i}.icon`)} ${textField('Title', `whyus.advantages.${i}.title`, 'Title')}</div>
+            ${textArea('Description', `whyus.advantages.${i}.desc`, 'Description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('whyus.advantages',{icon:'✨',title:'New Advantage',desc:'Description...'})"><i class="fas fa-plus"></i> Add Advantage</button>
+        ${saveButton()}</div>`;
+      },
+
+      career_page: () => {
+        const perks = getVal('career.perks') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-user-tie"></i> Career Page — Hero</div>
+          ${textField('Title', 'career.hero.title', 'Page title')}
+          ${textField('Subtitle', 'career.hero.subtitle', 'Subtitle')}
+          <div class="form-row">${iconField('Icon', 'career.hero.icon')} ${imageField('Background Image', 'career.hero.bgImage')}</div>
+        ${saveButton()}</div>
+        <div class="card"><div class="card-title"><i class="fas fa-gift"></i> Perks</div>
+          ${perks.map((p, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>${p.icon} ${p.title}</h4><button class="remove-btn" onclick="removeArrayItem('career.perks',${i})"><i class="fas fa-times"></i></button></div>
+            <div class="form-row">${iconField('Icon', `career.perks.${i}.icon`)} ${textField('Title', `career.perks.${i}.title`, 'Title')}</div>
+            ${textArea('Description', `career.perks.${i}.desc`, 'Description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('career.perks',{icon:'🎁',title:'New Perk',desc:'Description...'})"><i class="fas fa-plus"></i> Add Perk</button>
+        ${saveButton()}</div>`;
+      },
+
+      contact_page: () => `
+        <div class="card"><div class="card-title"><i class="fas fa-envelope"></i> Contact Page</div>
+          ${textField('Hero Title', 'contact.hero.title', 'Page title')}
+          ${textField('Hero Subtitle', 'contact.hero.subtitle', 'Subtitle')}
+          <div class="form-row">${iconField('Icon', 'contact.hero.icon')} ${imageField('Background Image', 'contact.hero.bgImage')}</div>
+        ${saveButton()}</div>
+        <div class="card"><div class="card-title"><i class="fas fa-map-marker-alt"></i> Contact Information</div>
+          <div class="form-row">${textField('Email', 'contact.info.email', 'Email', 'email')} ${textField('Phone 1', 'contact.info.phones.0', 'Phone')} ${textField('Phone 2', 'contact.info.phones.1', 'Phone')}</div>
+          <div class="form-group"><label>Office Address Lines</label>
+            ${(getVal('contact.info.office') || []).map((l, i) => `<div style="display:flex;gap:8px;margin-bottom:8px;"><input type="text" value="${l}" onchange="updateArrayItem('contact.info.office',${i},this.value)" style="flex:1;" /><button class="remove-btn" onclick="removeArrayItem('contact.info.office',${i})"><i class="fas fa-times"></i></button></div>`).join('')}
+            <button class="add-btn" style="margin-top:4px;" onclick="addArrayItem('contact.info.office','New line')"><i class="fas fa-plus"></i> Add Line</button>
+          </div>
+          <div class="form-group"><label>Working Hours</label>
+            ${(getVal('contact.info.hours') || []).map((l, i) => `<div style="display:flex;gap:8px;margin-bottom:8px;"><input type="text" value="${l}" onchange="updateArrayItem('contact.info.hours',${i},this.value)" style="flex:1;" /><button class="remove-btn" onclick="removeArrayItem('contact.info.hours',${i})"><i class="fas fa-times"></i></button></div>`).join('')}
+            <button class="add-btn" style="margin-top:4px;" onclick="addArrayItem('contact.info.hours','New line')"><i class="fas fa-plus"></i> Add Line</button>
+          </div>
+        ${saveButton()}</div>`,
+
+      book_section: () => {
+        const bookPages = getVal('bookPages') || [];
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-book"></i> Book Pages (Why Us)</div>
+          <p style="color:#666;font-size:13px;line-height:1.7;margin-bottom:16px;">Manage the pages shown in the "Our Story" book section on the Why Us page. Each entry shows as a left-right page spread.</p>
+          ${bookPages.map((p, i) => `
+          <div class="list-item">
+            <div class="list-item-header"><h4>Spread ${i + 1}</h4><button class="remove-btn" onclick="removeArrayItem('bookPages',${i})"><i class="fas fa-times"></i></button></div>
+            <h4 style="margin:8px 0 4px;font-size:12px;color:#2e7d32;">Left Page</h4>
+            <div class="form-row">${textField('Left Title', 'bookPages.' + i + '.leftTitle', 'Page title')} ${iconField('Left Icon', 'bookPages.' + i + '.leftIcon')}</div>
+            ${textArea('Left Text', 'bookPages.' + i + '.leftText', 'Page description...')}
+            <h4 style="margin:12px 0 4px;font-size:12px;color:#2e7d32;">Right Page</h4>
+            <div class="form-row">${textField('Right Title', 'bookPages.' + i + '.rightTitle', 'Page title')} ${iconField('Right Icon', 'bookPages.' + i + '.rightIcon')}</div>
+            ${textArea('Right Text', 'bookPages.' + i + '.rightText', 'Page description...')}
+          </div>`).join('')}
+          <button class="add-btn" onclick="addArrayItem('bookPages',{leftTitle:'New Page',leftText:'Description...',leftIcon:'\u2728',rightTitle:'New Page',rightText:'Description...',rightIcon:'\u2728'})"><i class="fas fa-plus"></i> Add Spread</button>
+        ${saveButton()}</div>`;
+      },
+
+      admin_password: () => {
+        const currentPw = localStorage.getItem('adminPassword') || 'raj@123';
+        return `
+        <div class="card"><div class="card-title"><i class="fas fa-lock"></i> Admin Password Settings</div>
+          <p style="color:#666;font-size:13px;line-height:1.7;margin-bottom:20px;">Change the admin panel access password. This password is used to access the admin panel from the main website (click logo 12 times).</p>
+          <div class="form-group">
+            <label>Current Password</label>
+            <input type="password" id="current-pw" placeholder="Enter current password" />
+          </div>
+          <div class="form-group">
+            <label>New Password</label>
+            <input type="password" id="new-pw" placeholder="Enter new password" />
+          </div>
+          <div class="form-group">
+            <label>Confirm New Password</label>
+            <input type="password" id="confirm-pw" placeholder="Confirm new password" />
+          </div>
+          <div style="text-align:right;margin-top:20px;">
+            <button class="btn btn-primary" onclick="changeAdminPassword()"><i class="fas fa-save"></i> Update Password</button>
+          </div>
+        </div>`;
+      },
+
+    };
+
+    // Array helpers
+    function addArrayItem(path, defaultItem) {
+      const arr = getVal(path) || [];
+      arr.push(typeof defaultItem === 'object' ? JSON.parse(JSON.stringify(defaultItem)) : defaultItem);
+      setVal(path, arr);
+      renderSection();
+    }
+    function removeArrayItem(path, index) {
+      const arr = getVal(path) || [];
+      arr.splice(index, 1);
+      setVal(path, arr);
+      renderSection();
+    }
+    function updateArrayItem(path, index, value) {
+      const arr = getVal(path) || [];
+      arr[index] = value;
+      setVal(path, arr);
+    }
+
+    // Render current section
+    function renderSection() {
+      const area = document.getElementById('content-area');
+      const renderer = SECTION_RENDERERS[currentSection];
+      if (renderer) {
+        area.innerHTML = renderer();
+      } else {
+        area.innerHTML = '<div class="card"><p>Select a section from the sidebar to edit.</p></div>';
+      }
+    }
+
+    function toggleSidebar() {
+      document.getElementById('sidebar').classList.toggle('open');
+    }
+
+    // Init
+    loadContent();
+  </script>
+</body>
+</html>
