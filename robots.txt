@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Allow: /#home
+Allow: /#about
+Allow: /#products
+Allow: /#whyus
+Allow: /#career
+Allow: /#csr
+Allow: /#press
+Allow: /#contact
+Disallow: /admin.html
+
+Sitemap: https://nandgopalpashuahar.in/sitemap.xml
