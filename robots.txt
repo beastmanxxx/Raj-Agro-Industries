@@ -1,0 +1,23 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /tmp/
+Disallow: /*.json$
+
+User-agent: Googlebot
+Allow: /
+Disallow: /admin.html
+
+User-agent: Bingbot
+Allow: /
+Disallow: /admin.html
+
+User-agent: Yandex
+Allow: /
+Disallow: /admin.html
+
+# Crawl-delay for polite bots
+User-agent: *
+Crawl-delay: 5
+
+Sitemap: https://nandgopalpashuahar.in/sitemap.xml
